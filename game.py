@@ -10,8 +10,6 @@ font = pygame.font.Font('arial.ttf', 25)
 
 # font = pygame.font.SysFont('arial', 25)
 
-
-
 class Direction(Enum):
     RIGHT = 1
     LEFT = 2
@@ -29,7 +27,7 @@ BLUE2 = (0, 100, 255)
 BLACK = (0, 0, 0)
 
 BLOCK_SIZE = 20
-SPEED = 20
+SPEED = 40
 
 
 class SnakeGameAI:
@@ -44,7 +42,7 @@ class SnakeGameAI:
         self.reset()
 
     def reset(self):
-        # inizia il gioco
+        # init game state
         self.direction = Direction.RIGHT
 
         self.head = Point(self.w / 2, self.h / 2)
@@ -66,25 +64,25 @@ class SnakeGameAI:
 
     def play_step(self, action):
         self.frame_iteration += 1
+        # 1. collect user input
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
 
-
-        # 2. muovi
-        self._move(action)  # aggiorna la testa del serpente
+        # 2. move
+        self._move(action)  # update the head
         self.snake.insert(0, self.head)
 
-        # 3. controlla se ha perso
+        # 3. check if game over
         reward = 0
         game_over = False
         if self.is_collision() or self.frame_iteration > 100 * len(self.snake):
             game_over = True
-            reward = - 10
+            reward = -10
             return reward, game_over, self.score
 
-        # 4. piazza cibo o muovi
+        # 4. place new food or just move
         if self.head == self.food:
             self.score += 1
             reward = 10
@@ -92,19 +90,19 @@ class SnakeGameAI:
         else:
             self.snake.pop()
 
-        # 5. aggiorna display
+        # 5. update ui and clock
         self._update_ui()
         self.clock.tick(SPEED)
-        # 6. restituisci i risultati
+        # 6. return game over and score
         return reward, game_over, self.score
 
     def is_collision(self, pt=None):
         if pt is None:
             pt = self.head
-        # colpisce i bordi
+        # hits boundary
         if pt.x > self.w - BLOCK_SIZE or pt.x < 0 or pt.y > self.h - BLOCK_SIZE or pt.y < 0:
             return True
-        # colpisce se stesso
+        # hits itself
         if pt in self.snake[1:]:
             return True
 
@@ -119,24 +117,26 @@ class SnakeGameAI:
 
         pygame.draw.rect(self.display, RED, pygame.Rect(self.food.x, self.food.y, BLOCK_SIZE, BLOCK_SIZE))
 
-        text = font.render("Punteggio: " + str(self.score), True, WHITE)
+        text = font.render("Score: " + str(self.score), True, WHITE)
         self.display.blit(text, [0, 0])
         pygame.display.flip()
 
     def _move(self, action):
+        # [straight, right, left]
 
         clock_wise = [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP]
         idx = clock_wise.index(self.direction)
 
         if np.array_equal(action, [1, 0, 0]):
-            new_dir = clock_wise[idx]
+            new_dir = clock_wise[idx]  # no change
         elif np.array_equal(action, [0, 1, 0]):
             next_idx = (idx + 1) % 4
-            new_dir = clock_wise[idx]
-        else:
+            new_dir = clock_wise[next_idx]  # right turn r -> d -> l -> u
+        else:  # [0, 0, 1]
             next_idx = (idx - 1) % 4
-            new_dir = clock_wise[idx]
+            new_dir = clock_wise[next_idx]  # left turn r -> u -> l -> d
 
+        self.direction = new_dir
 
         x = self.head.x
         y = self.head.y
@@ -150,5 +150,3 @@ class SnakeGameAI:
             y -= BLOCK_SIZE
 
         self.head = Point(x, y)
-
-
